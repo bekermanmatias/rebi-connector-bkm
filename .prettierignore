@@ -1,0 +1,8 @@
+node_modules
+dist
+dist-release
+data
+logs
+docs/discovery-report.json
+docs/discovery-report.md
+package-lock.json

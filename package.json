@@ -1,0 +1,68 @@
+{
+  "name": "cooperacion-navasoft-connector",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Connector de integracion NavaSoft -> API externa (SQL Server READ ONLY). Corre en Windows Server sin puertos entrantes.",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=18.18.0"
+  },
+  "main": "dist/index.js",
+  "bin": {
+    "navasoft-connector": "dist/index.js"
+  },
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/index.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write \"src/**/*.ts\" \"scripts/**/*.{ts,mjs}\" \"*.{json,md}\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"scripts/**/*.{ts,mjs}\"",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:test": "tsx src/index.ts db:test",
+    "db:tables": "tsx src/index.ts db:tables",
+    "db:columns": "tsx src/index.ts db:columns",
+    "db:relations": "tsx src/index.ts db:relations",
+    "db:search": "tsx src/index.ts db:search",
+    "db:sample": "tsx src/index.ts db:sample",
+    "discovery": "tsx src/index.ts discovery",
+    "sync:products": "tsx src/index.ts sync products",
+    "sync:stock": "tsx src/index.ts sync stock",
+    "sync:prices": "tsx src/index.ts sync prices",
+    "sync:clients": "tsx src/index.ts sync clients",
+    "sync:dictionaries": "tsx src/index.ts sync dictionaries",
+    "sync:full": "tsx src/index.ts sync full",
+    "sync:incremental": "tsx src/index.ts sync incremental",
+    "queue:status": "tsx src/index.ts queue:status",
+    "queue:drain": "tsx src/index.ts queue:drain",
+    "service:install": "powershell -ExecutionPolicy Bypass -File scripts/install-service.ps1",
+    "service:uninstall": "powershell -ExecutionPolicy Bypass -File scripts/uninstall-service.ps1",
+    "service:start": "powershell -ExecutionPolicy Bypass -File scripts/start-service.ps1",
+    "service:stop": "powershell -ExecutionPolicy Bypass -File scripts/stop-service.ps1",
+    "service:restart": "powershell -ExecutionPolicy Bypass -File scripts/restart-service.ps1",
+    "service:status": "powershell -ExecutionPolicy Bypass -File scripts/status-service.ps1",
+    "package": "node scripts/package.mjs"
+  },
+  "dependencies": {
+    "axios": "^1.7.7",
+    "commander": "^12.1.0",
+    "dotenv": "^16.4.5",
+    "mssql": "^11.0.1",
+    "pino": "^9.5.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/mssql": "^12.3.0",
+    "@types/node": "^20.16.11",
+    "eslint": "^9.9.0",
+    "pino-pretty": "^11.2.2",
+    "prettier": "^3.3.3",
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.3",
+    "typescript-eslint": "^8.9.0",
+    "vitest": "^2.1.3"
+  }
+}

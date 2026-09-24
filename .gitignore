@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+dist-release/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Local runtime state
+data/*
+!data/.gitkeep
+logs/*
+!logs/.gitkeep
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+
+# Discovery output (may contain real schema/data). Keep out of git by default.
+docs/discovery-report.json
+docs/discovery-report.md
+
+# Local mapping (real, derived from discovery). Keep the example only.
+config/mapping.json
+
+# Tooling / OS
+coverage/
+.idea/
+.vscode/
+Thumbs.db
+Desktop.ini
+*.log

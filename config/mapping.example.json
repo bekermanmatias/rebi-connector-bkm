@@ -1,0 +1,85 @@
+{
+  "products": {
+    "source": "dbo.ARTICULOS_EXAMPLE",
+    "idColumn": "ID_ARTICULO",
+    "skuColumn": "CODIGO",
+    "barcodeColumn": "CODIGO_BARRA",
+    "nameColumn": "DESCRIPCION",
+    "descriptionColumn": "DESCRIPCION_LARGA",
+    "brandIdColumn": "ID_MARCA",
+    "familyIdColumn": "ID_FAMILIA",
+    "subfamilyIdColumn": "ID_SUBFAMILIA",
+    "groupIdColumn": "ID_GRUPO",
+    "unitColumn": "UNIDAD_MEDIDA",
+    "activeColumn": "ACTIVO",
+    "updatedAtColumn": "FECHA_MOD",
+    "strategy": "updated_at"
+  },
+  "stock": {
+    "source": "dbo.STOCK_EXAMPLE",
+    "productIdColumn": "ID_ARTICULO",
+    "warehouseIdColumn": "ID_DEPOSITO",
+    "quantityColumn": "STOCK",
+    "reservedColumn": "RESERVADO",
+    "availableColumn": "DISPONIBLE",
+    "updatedAtColumn": "FECHA_MOD",
+    "strategy": "updated_at"
+  },
+  "prices": {
+    "source": "dbo.PRECIOS_EXAMPLE",
+    "productIdColumn": "ID_ARTICULO",
+    "priceListIdColumn": "ID_LISTA",
+    "amountColumn": "PRECIO",
+    "currencyColumn": "MONEDA",
+    "taxIncludedColumn": "IGV_INCLUIDO",
+    "updatedAtColumn": "FECHA_MOD",
+    "strategy": "updated_at"
+  },
+  "clients": {
+    "source": "dbo.CLIENTES_EXAMPLE",
+    "idColumn": "ID_CLIENTE",
+    "taxIdColumn": "RUC",
+    "businessNameColumn": "RAZON_SOCIAL",
+    "priceListIdColumn": "ID_LISTA",
+    "activeColumn": "ACTIVO",
+    "updatedAtColumn": "FECHA_MOD",
+    "strategy": "updated_at"
+  },
+  "dictionaries": {
+    "brands": {
+      "source": "dbo.MARCAS_EXAMPLE",
+      "idColumn": "ID_MARCA",
+      "nameColumn": "NOMBRE"
+    },
+    "families": {
+      "source": "dbo.FAMILIAS_EXAMPLE",
+      "idColumn": "ID_FAMILIA",
+      "nameColumn": "NOMBRE"
+    },
+    "subfamilies": {
+      "source": "dbo.SUBFAMILIAS_EXAMPLE",
+      "idColumn": "ID_SUBFAMILIA",
+      "nameColumn": "NOMBRE"
+    },
+    "groups": {
+      "source": "dbo.GRUPOS_EXAMPLE",
+      "idColumn": "ID_GRUPO",
+      "nameColumn": "NOMBRE"
+    },
+    "units": {
+      "source": "dbo.UNIDADES_EXAMPLE",
+      "idColumn": "ID_UNIDAD",
+      "nameColumn": "NOMBRE"
+    },
+    "warehouses": {
+      "source": "dbo.DEPOSITOS_EXAMPLE",
+      "idColumn": "ID_DEPOSITO",
+      "nameColumn": "NOMBRE"
+    },
+    "priceLists": {
+      "source": "dbo.LISTAS_PRECIO_EXAMPLE",
+      "idColumn": "ID_LISTA",
+      "nameColumn": "NOMBRE"
+    }
+  }
+}
