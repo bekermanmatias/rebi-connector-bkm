@@ -67,9 +67,11 @@ notepad .env
 
 Completar como mínimo:
 
-- `DB_SERVER`, `DB_DATABASE`, `DB_USER`, `DB_PASSWORD`
-- `REMOTE_API_BASE_URL`, `REMOTE_API_KEY`
-- `SYNC_ENABLED=true` (para que el servicio sincronice)
+- `SQL_HOST=localhost`, `SQL_DATABASE=BdRebi`, `SQL_USER`, `SQL_PASSWORD`
+- `CONNECTOR_API_TOKEN` (protege la API local)
+- `BKM_API_URL`, `BKM_API_TOKEN`
+- `SYNC_ENABLED=false` por defecto (activar solo cuando Sistemas confirme la
+  frecuencia real de actualización de la réplica)
 
 Nunca commitear `.env` (está en `.gitignore`).
 
@@ -79,15 +81,20 @@ En el release compilado, instalar dependencias de producción:
 npm ci --omit=dev
 ```
 
-## 5. Descubrir el esquema y mapear
+## 5. Validar conexión y API local
 
 ```powershell
-npm run db:test
-npm run discovery
-# revisar docs/discovery-report.md
-# crear config/mapping.json (ver docs/DATABASE_MAPPING.md)
-npm run sync:products -- --dry-run
+npm run db:test        # confirma conexión SQL y READ ONLY
+npm start              # levanta la API local en 127.0.0.1:3000
+# en otra consola:
+curl http://127.0.0.1:3000/health
+curl -H "Authorization: Bearer <CONNECTOR_API_TOKEN>" "http://127.0.0.1:3000/products?limit=5"
+# sync manual (requiere BKM configurado):
+curl -X POST -H "Authorization: Bearer <CONNECTOR_API_TOKEN>" http://127.0.0.1:3000/sync
 ```
+
+`npm run discovery` sigue disponible como herramienta de diagnóstico del esquema,
+pero la tabla y el mapeo reales ya están fijos en el código.
 
 ## 6. Instalar el servicio
 
@@ -128,8 +135,9 @@ Desinstalar **no** borra `data/`, `logs/` ni `.env`.
 
 - Logs: `logs\connector.log` (rotación por tamaño) y `logs\service-out.log` /
   `logs\service-err.log` (stdout/stderr capturados por NSSM).
-- Estado local: `data\connector.sqlite` (queue) y `data\sync-state.json` (cursores).
-- Nunca se registran `DB_PASSWORD` ni `REMOTE_API_KEY`.
+- Estado local: `data\sync-state.json` (cursores), `data\last-sync.json` (último
+  resultado de sync) y `data\connector.sqlite` (queue del modo genérico).
+- Nunca se registran `SQL_PASSWORD`, `BKM_API_TOKEN` ni `CONNECTOR_API_TOKEN`.
 
 ## Actualizar la versión
 
@@ -143,9 +151,12 @@ No se recomienda `git pull` en el servidor del cliente.
 ## Troubleshooting
 
 - **El servicio no arranca**: revisar `logs\service-err.log`. Suele ser `.env`
-  incompleto (`SYNC_ENABLED=true` exige SQL y API configurados).
-- **"Missing DB_SERVER"**: completar `.env`.
+  incompleto o una variable con formato inválido.
+- **"Missing SQL_HOST"**: completar `.env` (o usar los alias `DB_*`).
 - **READ ONLY = NO**: pedir al DBA un usuario con permisos solo de lectura.
+- **`/health` responde `degraded`**: SQL Server caído o credenciales incorrectas.
+- **`/sync` responde `503 SYNC_NOT_CONFIGURED`**: falta `BKM_API_URL`/`BKM_API_TOKEN`.
+- **`/products` responde `503 AUTH_NOT_CONFIGURED`**: falta `CONNECTOR_API_TOKEN`.
 - **No aparecen tablas en discovery**: el login no puede leer `sys.*`; pedir permiso
   de lectura de catálogo.
 - **NSSM no encontrado**: instalarlo o pasar `-NssmPath`.
@@ -157,7 +168,7 @@ soporta auto-restart y logging. Se puede usar en lugar de NSSM:
 
 1. Descargar `WinSW-x64.exe` desde el repositorio oficial de WinSW.
 2. Crear `navasoft-connector.xml` apuntando a `node` con argumento
-   `dist\index.js run` y `workingdirectory` al proyecto.
+   `dist\index.js serve` y `workingdirectory` al proyecto.
 3. `navasoft-connector.exe install` / `start`.
 
 NSSM sigue siendo la opción recomendada por simplicidad para Windows Server 2016.

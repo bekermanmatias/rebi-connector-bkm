@@ -56,3 +56,24 @@ export const DEFAULT_LOG_DIR = './logs';
 export const DEFAULT_DISCOVERY_DIR = './docs';
 export const DEFAULT_MAPPING_PATH = './config/mapping.json';
 export const DEFAULT_MAPPING_EXAMPLE_PATH = './config/mapping.example.json';
+
+// ---------------------------------------------------------------------------
+// Productos (fuente real NavaSoft: dbo.ProductoStock)
+// ---------------------------------------------------------------------------
+
+/** Tabla real de productos/stock de la replica NavaSoft. */
+export const PRODUCTS_TABLE = 'dbo.ProductoStock';
+
+/** Paginacion de la API local GET /products. */
+export const PRODUCTS_DEFAULT_LIMIT = 50;
+export const PRODUCTS_MAX_LIMIT = 500;
+
+/** Dataset logico que viaja hacia BKM. */
+export const BKM_PRODUCTS_DATASET = 'products';
+
+/** Estrategia de reconciliacion del contrato BKM (aun no se eliminan productos). */
+export const BKM_SYNC_MODE = 'upsert';
+export const BKM_ALLOW_DELETIONS = false;
+
+/** Estado persistido del ultimo sync de productos. */
+export const DEFAULT_LAST_SYNC_PATH = './data/last-sync.json';

@@ -117,6 +117,22 @@ export async function queryScalar<T = unknown>(
   return values.length > 0 ? values[0] : null;
 }
 
+export interface DatabasePing {
+  connected: boolean;
+  latencyMs: number | null;
+}
+
+/** Chequeo liviano de conectividad para GET /health. No propaga errores. */
+export async function pingDatabase(timeoutMs = 5_000): Promise<DatabasePing> {
+  const start = Date.now();
+  try {
+    await queryScalar('SELECT 1', {}, { timeoutMs });
+    return { connected: true, latencyMs: Date.now() - start };
+  } catch {
+    return { connected: false, latencyMs: null };
+  }
+}
+
 export async function closePool(): Promise<void> {
   if (pool) {
     try {

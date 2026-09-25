@@ -1,4 +1,6 @@
 import { Command } from 'commander';
+import { BkmApiClient } from '../bkm/bkm-client';
+import { ProductSyncService } from '../bkm/sync-service';
 import {
   APP_VERSION,
   DEFAULT_DISCOVERY_SAMPLE_LIMIT,
@@ -7,7 +9,10 @@ import {
 import {
   ConfigError,
   getEnv,
+  isBkmConfigured,
+  isDbConfigured,
   isRemoteConfigured,
+  requireBkmConfig,
   requireDbConfig,
   requireRemoteConfig,
 } from '../config/env';
@@ -22,13 +27,13 @@ import {
   sampleTable,
 } from '../db/inspector';
 import { runDiscovery } from '../discovery/schema-discovery';
-import { HeartbeatService, createReplicaProbe } from '../health/heartbeat';
 import { getLogger } from '../logger';
 import { loadMapping } from '../mapping/load';
+import { createProductSyncSource } from '../products/service';
 import { LocalQueue } from '../queue/queue';
 import type { BatchSender } from '../queue/queue';
 import { RemoteApiClient } from '../remote/api-client';
-import { Scheduler } from '../sync/scheduler';
+import { startServer } from '../server/bootstrap';
 import { syncFull, syncFullDataset, syncDictionaries } from '../sync/full-sync';
 import { syncIncrementalDataset, type IncrementalDependencies } from '../sync/incremental-sync';
 import { SyncStateStore } from '../sync/sync-state';
@@ -412,77 +417,51 @@ async function cmdQueueDrain(): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
-// run (servicio)
+// serve (servicio real: API HTTP + sync BKM)
 // ---------------------------------------------------------------------------
 
-async function runService(): Promise<void> {
+async function cmdServe(): Promise<void> {
   const env = getEnv();
   const logger = getLogger();
-  requireDbConfig(env);
-  if (!env.SYNC_ENABLED) {
-    logger.warn(
-      'SYNC_ENABLED=false: no se iniciara la sincronizacion. Setear SYNC_ENABLED=true para el servicio.',
-    );
-    return;
-  }
-  requireRemoteConfig(env);
-
-  const mapping = loadMapping();
-  if (mapping.isExample) {
-    logger.error('El mapping es el EXAMPLE. Deteniendo: configurar config/mapping.json real.');
-    process.exitCode = 1;
-    return;
-  }
-  const queue = LocalQueue.open();
-  queue.resetStale();
-  const state = new SyncStateStore();
-  const client = new RemoteApiClient({ env });
-
-  const deps = {
-    env,
-    mapping,
-    queue,
-    state,
-    sender: async (batch: Parameters<BatchSender>[0]) =>
-      client.sendBatch(batch.dataset, batch.batchId, batch.records),
-  };
-
-  const scheduler = new Scheduler(deps);
-  const heartbeat = new HeartbeatService(
-    { env, queue, state, replicaProbe: createReplicaProbe(mapping) },
-    client,
-  );
-
-  if (env.SYNC_FULL_ON_START) {
-    logger.info('SYNC_FULL_ON_START=true: ejecutando full sync inicial');
-    try {
-      await syncFull({ mapping, queue, batchSize: env.REMOTE_BATCH_SIZE });
-      await queue.drain(deps.sender);
-    } catch (err) {
-      logger.error(
-        { err: (err as Error).message },
-        'Full sync inicial fallo; el scheduler continuara',
-      );
-    }
+  if (!isDbConfigured(env)) {
+    logger.warn('SQL Server no configurado: GET /health reportara sql.connected=false');
   }
 
-  scheduler.start();
-  heartbeat.start();
+  const handle = await startServer(env);
 
   const shutdown = async (signal: string): Promise<void> => {
     logger.info({ signal }, 'Deteniendo servicio');
-    scheduler.stop();
-    heartbeat.stop();
-    await closePool();
-    process.exit(0);
+    try {
+      await handle.close();
+    } finally {
+      process.exit(0);
+    }
   };
   process.on('SIGINT', () => void shutdown('SIGINT'));
   process.on('SIGTERM', () => void shutdown('SIGTERM'));
+}
 
-  logger.info(
-    { connectorId: env.CONNECTOR_ID, clientId: env.CLIENT_ID, version: APP_VERSION },
-    'Servicio iniciado',
-  );
+async function cmdSyncBkm(): Promise<void> {
+  const env = getEnv();
+  requireDbConfig(env);
+  if (!isBkmConfigured(env)) requireBkmConfig(env);
+
+  const client = new BkmApiClient({ env });
+  const sync = new ProductSyncService({
+    source: createProductSyncSource(),
+    client,
+    batchSize: env.SYNC_BATCH_SIZE,
+    connectorId: env.CONNECTOR_ID,
+    clientId: env.CLIENT_ID,
+  });
+
+  try {
+    const result = await sync.run();
+    console.log(JSON.stringify(result, null, 2));
+    if (result.status !== 'SUCCESS') process.exitCode = 1;
+  } finally {
+    await closePool();
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -569,9 +548,14 @@ export function createProgram(): Command {
     .action(() => cmdQueueDrain().catch(handleError));
 
   program
-    .command('run', { isDefault: true })
-    .description('Inicia el servicio (scheduler + heartbeat)')
-    .action(() => runService().catch(handleError));
+    .command('sync:bkm', { isDefault: false })
+    .description('Sincroniza productos hacia BKM una vez (SQL -> normalizar -> POST)')
+    .action(() => cmdSyncBkm().catch(handleError));
+
+  program
+    .command('serve', { isDefault: true })
+    .description('Inicia la API HTTP local (products/health/sync) y el scheduler opcional')
+    .action(() => cmdServe().catch(handleError));
 
   return program;
 }

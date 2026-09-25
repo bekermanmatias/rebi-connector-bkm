@@ -14,34 +14,54 @@ Principios y controles de seguridad del connector NavaSoft.
   y múltiples sentencias. No se confía únicamente en los permisos SQL.
 - **Queries parametrizadas**: los valores se bindean; los identificadores se citan
   con corchetes y se escapan. No hay interpolación de valores.
-- **Timeouts**: `DB_CONNECTION_TIMEOUT_MS` y `DB_REQUEST_TIMEOUT_MS` acotan las
+- **Timeouts**: `SQL_CONNECTION_TIMEOUT_MS` y `SQL_REQUEST_TIMEOUT_MS` acotan las
   operaciones.
 - **Lecturas limitadas**: paginación con `OFFSET/FETCH` y `TOP (@n)` parametrizado.
+- **Tabla real**: solo se lee `dbo.ProductoStock` mediante la capa
+  `src/products/repository.ts` (query canónica centralizada).
 
 ## Red
 
-- **Solo HTTPS saliente (443)** hacia la API externa.
-- El connector **no abre puertos entrantes** y **no necesita recibir tráfico**.
-- **No se expone SQL Server a Internet**: el connector corre dentro de la red del
-  cliente o en el mismo servidor.
-- Reintentos con backoff; si la API cae, los datos se encolan localmente y no se
-  pierden.
+- **Solo HTTPS saliente (443)** hacia la API BKM.
+- El connector **no abre puertos entrantes** y **no necesita recibir tráfico** de
+  Internet.
+- **NO abrir SQL Server / 1433 a Internet.** El connector corre en el mismo
+  Windows Server y se conecta a `localhost` (`SQL_HOST=localhost`).
+- La comunicación externa preferida es **OUTBOUND** desde el servidor hacia la
+  infraestructura de BKM (nunca conexiones entrantes hacia SQL Server).
+- Reintentos con backoff; si la API cae, se conserva el diagnóstico de cada lote
+  (`syncId`, `batchId`, `batchIndex`, error) y la sync termina en `FAILED` o
+  `PARTIAL` sin modificar SQL.
+
+## API local del connector
+
+- Escucha por defecto en `127.0.0.1:3000` (`API_HOST`/`PORT`), no expuesta a
+  Internet.
+- Todos los endpoints salvo `GET /health` requieren
+  `Authorization: Bearer <CONNECTOR_API_TOKEN>` (comparación timing-safe).
+- Si `CONNECTOR_API_TOKEN` está vacío, los endpoints protegidos responden `503`
+  (`AUTH_NOT_CONFIGURED`) en lugar de quedar abiertos.
+- **CORS cerrado**: solo los orígenes de `CORS_ALLOWED_ORIGINS`; nunca `*`.
+- **Rate limiting** en memoria (`API_RATE_LIMIT_MAX` / `API_RATE_LIMIT_WINDOW_MS`).
+- `GET /health` nunca expone usuario SQL, password, connection string ni stack
+  traces; los errores HTTP usan códigos genéricos.
 
 ## Secretos
 
 - Los secretos viven **solo** en `.env`, que está en `.gitignore`.
 - `.env.example` no contiene secretos reales.
 - El artefacto `dist-release/` **no incluye** `.env`.
-- En logs, Pino redacta `password`, `apiKey`, `DB_PASSWORD`, `REMOTE_API_KEY` y
-  `authorization`.
-- No se loguean payloads completos ni datos sensibles de clientes.
+- En logs, Pino redacta `password`, `apiKey`, `DB_PASSWORD`, `SQL_PASSWORD`,
+  `REMOTE_API_KEY`, `BKM_API_TOKEN`, `CONNECTOR_API_TOKEN` y `authorization`.
+- No se loguean payloads completos ni datos sensibles de clientes; el token de BKM
+  nunca aparece en logs.
 
 ## Autenticación con la API
 
-- `Authorization: Bearer <REMOTE_API_KEY>`.
+- API BKM: `Authorization: Bearer <BKM_API_TOKEN>`.
 - La API key es **revocable**; rotarla ante sospecha.
-- `Idempotency-Key` (por batch) y `X-Request-Id` facilitan auditoría y evitan
-  duplicados.
+- `Idempotency-Key` (por batch), `X-Sync-Id` y `X-Batch-Index` facilitan auditoría
+  y evitan duplicados.
 - El diseño permite reemplazar Bearer por HMAC o mTLS implementando `AuthStrategy`
   (`src/remote/auth.ts`) sin tocar el resto del sistema.
 
